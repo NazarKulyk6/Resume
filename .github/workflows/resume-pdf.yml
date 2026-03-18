@@ -1,0 +1,99 @@
+name: Build Resume PDF (via MDtoPDF website)
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "Resume.md"
+      - "MDtoPDF/app/**"
+      - ".github/workflows/resume-pdf.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-pdf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright (Chromium)
+        run: |
+          npm i playwright
+          npx playwright install chromium --with-deps
+
+      - name: Generate Resume.pdf via https://nazarkulyk6.github.io/MDtoPDF/
+        env:
+          SITE_URL: "https://nazarkulyk6.github.io/MDtoPDF/"
+          MD_PATH: "Resume.md"
+          OUT_PATH: "Resume.pdf"
+        run: |
+          node <<'EOF'
+          const fs = require("fs");
+          const path = require("path");
+          const { chromium } = require("playwright");
+
+          const siteUrl = process.env.SITE_URL;
+          const mdPath = process.env.MD_PATH;
+          const outPath = process.env.OUT_PATH;
+
+          (async () => {
+            const markdown = fs.readFileSync(mdPath, "utf-8");
+
+            const browser = await chromium.launch({ headless: true });
+            const context = await browser.newContext({ acceptDownloads: true });
+            const page = await context.newPage();
+
+            try {
+              await page.goto(siteUrl, { waitUntil: "networkidle", timeout: 90_000 });
+              await page.waitForSelector("#editor", { timeout: 30_000 });
+              await page.waitForSelector("#btnDownloadPdf", { timeout: 30_000 });
+
+              await page.fill("#fileNameInput", "Resume");
+              await page.fill("#editor", markdown);
+              await page.waitForTimeout(500);
+
+              const downloadPromise = page.waitForEvent("download", { timeout: 120_000 });
+              await page.click("#btnDownloadPdf");
+              const download = await downloadPromise;
+
+              fs.mkdirSync(path.dirname(outPath), { recursive: true });
+              await download.saveAs(outPath);
+
+              const stat = fs.statSync(outPath);
+              if (!stat.size) throw new Error("Generated PDF is empty");
+              console.log(`OK: wrote ${outPath} (${stat.size} bytes)`);
+            } catch (e) {
+              try {
+                await page.screenshot({ path: "resume-pdf-error.png", fullPage: true });
+                console.log("Saved screenshot: resume-pdf-error.png");
+              } catch (_) {}
+              throw e;
+            } finally {
+              await browser.close();
+            }
+          })();
+          EOF
+
+      - name: Commit PDF (if changed)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Resume.pdf
+          if git diff --cached --quiet; then
+            echo "No changes in Resume.pdf"
+            exit 0
+          fi
+          git commit -m "chore(resume): update Resume.pdf"
+          git push
+
