@@ -1,7 +1,7 @@
 # Nazar Kulyk
 
 **Telegram:** [@nazoferom](https://t.me/nazoferom)  
-**GitHub:** [github.com/NazarKulyk6](https://github.com/NazarKulyk6)
+**GitHub:** [github.com/NazarKulyk6](https://github.com/NazarKulyk6)  
 **LinkedIn:** [Soon]
 
 ---
