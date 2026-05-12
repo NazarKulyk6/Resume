@@ -41,12 +41,6 @@ DevOps & Software Engineer with 1.5 years of professional experience in cryptocu
 
 ---
 
-## Education
-**Bachelor’s degree in Computer Engineering (in progress)**  
-National Technical University of Ukraine "Igor Sikorsky Kyiv Polytechnic Institute", 2023–present  
-
----
-
 ## Languages
 - Ukrainian – Native  
 - English – B2 (Upper-Intermediate)  
